@@ -1,10 +1,10 @@
 {
     "number_length": 4,
     "allow_repeats": false,
-    "window_width": 2560,
-    "window_height": 1349,
-    "window_x": 586,
-    "window_y": -19,
-    "theme": "dark",
+    "window_width": 737,
+    "window_height": 604,
+    "window_x": 1389,
+    "window_y": 295,
+    "theme": "light",
     "language": "ru"
 }
