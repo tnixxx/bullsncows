@@ -1,3 +1,4 @@
+import sv_ttk
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -62,6 +63,7 @@ class GameWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Быки и коровы")
+        sv_ttk.set_theme("dark")
         self.settings = Settings()
         self.stats = Stats()
         
@@ -69,8 +71,7 @@ class GameWindow(tk.Tk):
         self.geometry(f"{self.settings.get('window_width')}x{self.settings.get('window_height')}+{self.settings.get('window_x')}+{self.settings.get('window_y')}")
         self.minsize(600, 400)
         
-        # Применяем сохранённую тему
-        self.settings.apply_theme(self)
+        sv_ttk.set_theme(self.settings.get("theme"))
         
         # Инициализация игровой логики
         self.game = GameLogic(
@@ -261,7 +262,7 @@ class GameWindow(tk.Tk):
         about = (
             "Игра «Быки и коровы»\n"
             "Версия 1.0\n\n"
-            "Разработано в рамках учебной практики.\n"
+            "Разработано в рамках Выпускной Квалификационной Работы Васильевым Глебом, студент ИСПт-22-(9)-2.\n"
             "Используется Python + Tkinter."
         )
         messagebox.showinfo("О программе", about)
