@@ -19,6 +19,9 @@ class SettingsDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
         
+        # Применяем текущую тему к диалогу
+        sv_ttk.set_theme(self.settings.get("theme"))
+        
         self.create_widgets()
     
     def create_widgets(self):
@@ -51,9 +54,15 @@ class SettingsDialog(tk.Toplevel):
         # Сохраняем настройки
         self.settings.set("number_length", self.length_var.get())
         self.settings.set("allow_repeats", self.repeats_var.get())
-        self.settings.set("theme", self.theme_var.get())
-        # Применяем тему (можно перезапустить игру или обновить стиль)
-        self.settings.apply_theme(self.parent)
+        new_theme = self.theme_var.get()
+        self.settings.set("theme", new_theme)
+        
+        # Применяем новую тему глобально
+        sv_ttk.set_theme(new_theme)
+        
+        # Обновляем цвета таблицы в главном окне
+        self.parent.update_treeview_colors(new_theme)
+        
         self.destroy()
 
 
@@ -63,26 +72,24 @@ class GameWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Быки и коровы")
-        sv_ttk.set_theme("dark")
         self.settings = Settings()
         self.stats = Stats()
-        
         # Устанавливаем размер и положение окна из настроек
         self.geometry(f"{self.settings.get('window_width')}x{self.settings.get('window_height')}+{self.settings.get('window_x')}+{self.settings.get('window_y')}")
         self.minsize(600, 400)
-        
-        sv_ttk.set_theme(self.settings.get("theme"))
-        
+
+        sv_ttk.set_theme(self.settings.get("theme"))   # единственный вызов
+
         # Инициализация игровой логики
         self.game = GameLogic(
             length=self.settings.get('number_length'),
             allow_repeats=self.settings.get('allow_repeats')
         )
-        
+
         self.create_menu()
         self.create_widgets()
-        # self.update_status()
-        
+        self.update_treeview_colors(self.settings.get("theme"))  # сразу настраиваем цвета
+
         # Привязываем событие закрытия окна для сохранения геометрии
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
     
@@ -123,6 +130,11 @@ class GameWindow(tk.Tk):
         # Верхняя панель с полем ввода и кнопками
         input_frame = ttk.Frame(main_frame)
         input_frame.pack(fill=tk.X, pady=5)
+
+        # Прогресс-бар
+        self.progress = ttk.Progressbar(main_frame, orient="horizontal", 
+                                        length=200, mode="determinate")
+        self.progress.pack(pady=5)
         
         ttk.Label(input_frame, text="Ваше число:").pack(side=tk.LEFT, padx=5)
         self.entry_var = tk.StringVar()
@@ -130,13 +142,13 @@ class GameWindow(tk.Tk):
         self.entry.pack(side=tk.LEFT, padx=5)
         self.entry.focus()
         
-        self.check_btn = ttk.Button(input_frame, text="Проверить", command=self.check_guess)
+        self.check_btn = ttk.Button(input_frame, text="✓ Проверить", command=self.check_guess)
         self.check_btn.pack(side=tk.LEFT, padx=5)
         
-        self.hint_btn = ttk.Button(input_frame, text="Подсказка", command=self.hint)
+        self.hint_btn = ttk.Button(input_frame, text="? Подсказка", command=self.hint)
         self.hint_btn.pack(side=tk.LEFT, padx=5)
         
-        self.auto_btn = ttk.Button(input_frame, text="Авторешение", command=self.auto_solve)
+        self.auto_btn = ttk.Button(input_frame, text="⚡ Авто", command=self.auto_solve)
         self.auto_btn.pack(side=tk.LEFT, padx=5)
         
         # Таблица истории ходов
@@ -152,6 +164,20 @@ class GameWindow(tk.Tk):
         self.tree.column("guess", width=100, anchor=tk.CENTER)
         self.tree.column("bulls", width=70, anchor=tk.CENTER)
         self.tree.column("cows", width=70, anchor=tk.CENTER)
+
+        # Настройка стилей для Treeview
+        style = ttk.Style()
+        style.configure("Treeview", background="#ffffff", foreground="#000000", 
+                        fieldbackground="#ffffff", rowheight=25)
+        style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"), 
+                        background="#dddddd", foreground="#000000")
+        style.map("Treeview", background=[("selected", "#347083")])  # цвет выделенной строки
+        style.configure("Error.TEntry", fieldbackground="#ffcccc", foreground="#000000")
+
+
+        # Теги для чередования строк
+        self.tree.tag_configure('oddrow', background='#f2f2f2')
+        self.tree.tag_configure('evenrow', background='#ffffff')
         
         # Добавляем скроллбар
         scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.tree.yview)
@@ -185,26 +211,30 @@ class GameWindow(tk.Tk):
         if self.game.game_over:
             messagebox.showinfo("Игра окончена", "Игра уже завершена. Начните новую игру.")
             return
-        
+
         guess = self.entry_var.get().strip()
         try:
             bulls, cows = self.game.check_guess(guess)
         except ValueError as e:
-            messagebox.showerror("Ошибка ввода", str(e))
+            self.flash_entry()
             return
-        
-        # Добавляем запись в таблицу
+
+        # Добавляем запись в таблицу с чередованием фона
         move_num = len(self.game.history)
-        self.tree.insert("", tk.END, values=(move_num, guess, bulls, cows))
-        # Прокручиваем к последней записи
+        tag = 'evenrow' if move_num % 2 == 0 else 'oddrow'
+        self.tree.insert("", tk.END, values=(move_num, guess, bulls, cows), tags=(tag,))
         self.tree.see(self.tree.get_children()[-1])
-        
+
         self.entry_var.set("")
         self.status_var.set(f"Ход {move_num}: Быки: {bulls}, Коровы: {cows}")
-        
+
+        # Обновляем прогресс-бар
+        progress_value = (bulls / self.game.length) * 100
+        self.progress["value"] = progress_value
+
         if self.game.game_over:
             self.stats.add_game_won(move_num)
-            messagebox.showinfo("Победа!", f"Поздравляем! Вы угадали число {self.game.secret} за {move_num} ходов.")
+            self.show_win_dialog(move_num, self.game.secret)
             self.status_var.set(f"Победа! Число {self.game.secret}")
     
     def hint(self):
@@ -280,3 +310,29 @@ class GameWindow(tk.Tk):
             self.settings.set("window_x", int(x))
             self.settings.set("window_y", int(y))
         self.destroy()
+
+    def flash_entry(self):
+        """Мигает красным фоном поля ввода."""
+        self.entry.configure(background="#ffcccc")
+        self.after(500, lambda: self.entry.configure(background=""))
+
+    def show_win_dialog(self, moves, secret):
+        win = tk.Toplevel(self)
+        win.title("Победа!")
+        win.geometry("300x150")
+        win.resizable(False, False)
+        win.transient(self)
+        win.grab_set()
+        
+        ttk.Label(win, text="🎉 Поздравляем! 🎉", font=("Segoe UI", 14, "bold")).pack(pady=10)
+        ttk.Label(win, text=f"Вы угадали число {secret} за {moves} ходов.").pack()
+        ttk.Button(win, text="ОК", command=win.destroy).pack(pady=10)
+
+    def update_treeview_colors(self, theme):
+        """Обновляет цвета чередования строк в зависимости от темы."""
+        if theme == "dark":
+            self.tree.tag_configure('oddrow', background='#2d2d2d')
+            self.tree.tag_configure('evenrow', background='#3c3c3c')
+        else:
+            self.tree.tag_configure('oddrow', background='#f2f2f2')
+            self.tree.tag_configure('evenrow', background='#ffffff')
