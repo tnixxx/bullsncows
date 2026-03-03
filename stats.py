@@ -80,3 +80,14 @@ class Stats:
         text += f"Подсказок использовано: {self.data['hints_used']}\n"
         text += f"Авторешений: {self.data['auto_solves']}"
         return text
+    
+    def get_data(self):
+        return {
+            "games_played": self.data["games_played"],
+            "games_won": self.data["games_won"],
+            "total_moves": self.data["total_moves"],
+            "average_moves": self.data["total_moves"] / self.data["games_won"] if self.data["games_won"] > 0 else 0,
+            "best_score": self.data["best_score"],
+            "hints_used": self.data["hints_used"],
+            "auto_solves": self.data["auto_solves"]
+        }

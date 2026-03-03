@@ -12,7 +12,8 @@ class Settings:
         "window_height": 600,
         "window_x": 100,
         "window_y": 100,
-        "theme": "light"  # "light" or "dark"
+        "theme": "light",   # "light" or "dark"
+        "language": "ru",    # добавлено!
     }
     
     def __init__(self, filename="settings.json"):

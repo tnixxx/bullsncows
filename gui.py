@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 from game_logic import GameLogic
 from settings import Settings
 from stats import Stats
+from i18n import _, I18n
 
 class SettingsDialog(tk.Toplevel):
     """Диалог настроек игры."""
@@ -13,66 +14,69 @@ class SettingsDialog(tk.Toplevel):
         super().__init__(parent)
         self.parent = parent
         self.settings = settings
-        self.title("Настройки")
-        self.geometry("300x250")
+        self.title(_("settings_title"))
+        self.geometry("350x300")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
         
-        # Применяем текущую тему к диалогу
         sv_ttk.set_theme(self.settings.get("theme"))
-        
         self.create_widgets()
     
     def create_widgets(self):
         frame = ttk.Frame(self, padding="10")
         frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Длина числа
-        ttk.Label(frame, text="Длина числа:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(frame, text=_("number_length")).grid(row=0, column=0, sticky=tk.W, pady=5)
         self.length_var = tk.IntVar(value=self.settings.get("number_length"))
         length_spin = ttk.Spinbox(frame, from_=3, to=6, textvariable=self.length_var, width=5)
         length_spin.grid(row=0, column=1, sticky=tk.W, padx=5)
-        
+
         # Разрешить повторы
         self.repeats_var = tk.BooleanVar(value=self.settings.get("allow_repeats"))
-        ttk.Checkbutton(frame, text="Разрешить повтор цифр", variable=self.repeats_var).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
-        
+        ttk.Checkbutton(frame, text=_("allow_repeats"), variable=self.repeats_var).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+
         # Тема
-        ttk.Label(frame, text="Тема:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(frame, text=_("theme")).grid(row=2, column=0, sticky=tk.W, pady=5)
         self.theme_var = tk.StringVar(value=self.settings.get("theme"))
         theme_combo = ttk.Combobox(frame, textvariable=self.theme_var, values=["light", "dark"], state="readonly", width=10)
         theme_combo.grid(row=2, column=1, sticky=tk.W, padx=5)
-        
+
+        # Язык
+        ttk.Label(frame, text=_("language")).grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.lang_var = tk.StringVar(value=self.settings.get("language"))
+        lang_combo = ttk.Combobox(frame, textvariable=self.lang_var, values=["ru", "en"], state="readonly", width=10)
+        lang_combo.grid(row=3, column=1, sticky=tk.W, padx=5)
+
         # Кнопки
         btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=3, column=0, columnspan=2, pady=10)
-        ttk.Button(btn_frame, text="OK", command=self.ok).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Отмена", command=self.destroy).pack(side=tk.LEFT)
-    
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        ttk.Button(btn_frame, text=_("ok"), command=self.ok).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text=_("cancel"), command=self.destroy).pack(side=tk.LEFT)
+
     def ok(self):
-        # Сохраняем настройки
         self.settings.set("number_length", self.length_var.get())
         self.settings.set("allow_repeats", self.repeats_var.get())
         new_theme = self.theme_var.get()
         self.settings.set("theme", new_theme)
-        
-        # Применяем новую тему глобально
+        new_lang = self.lang_var.get()
+        if new_lang != self.settings.get("language"):
+            self.settings.set("language", new_lang)
+            I18n().set_language(new_lang)
+            self.parent.update_texts()  
         sv_ttk.set_theme(new_theme)
-        
-        # Обновляем цвета таблицы в главном окне
         self.parent.update_treeview_colors(new_theme)
-        
         self.destroy()
-
 
 class GameWindow(tk.Tk):
     """Главное окно игры."""
     
     def __init__(self):
         super().__init__()
-        self.title("Быки и коровы")
+        self.title(_("app_title"))   
         self.settings = Settings()
+        I18n().set_language(self.settings.get("language"))
         self.stats = Stats()
         # Устанавливаем размер и положение окна из настроек
         self.geometry(f"{self.settings.get('window_width')}x{self.settings.get('window_height')}+{self.settings.get('window_x')}+{self.settings.get('window_y')}")
@@ -132,33 +136,33 @@ class GameWindow(tk.Tk):
         input_frame.pack(fill=tk.X, pady=5)
 
         # Прогресс-бар
-        self.progress = ttk.Progressbar(main_frame, orient="horizontal", 
-                                        length=200, mode="determinate")
+        self.progress = ttk.Progressbar(main_frame, orient="horizontal", length=200, mode="determinate")
         self.progress.pack(pady=5)
         
-        ttk.Label(input_frame, text="Ваше число:").pack(side=tk.LEFT, padx=5)
+        self.label_your_number = ttk.Label(input_frame, text=_("your_number"))
+        self.label_your_number.pack(side=tk.LEFT, padx=5)
         self.entry_var = tk.StringVar()
         self.entry = ttk.Entry(input_frame, textvariable=self.entry_var, width=10, font=("Courier", 14))
         self.entry.pack(side=tk.LEFT, padx=5)
         self.entry.focus()
         
-        self.check_btn = ttk.Button(input_frame, text="✓ Проверить", command=self.check_guess)
+        self.check_btn = ttk.Button(input_frame, text=_("check"), command=self.check_guess)
         self.check_btn.pack(side=tk.LEFT, padx=5)
         
-        self.hint_btn = ttk.Button(input_frame, text="? Подсказка", command=self.hint)
+        self.hint_btn = ttk.Button(input_frame, text=_("hint"), command=self.hint)
         self.hint_btn.pack(side=tk.LEFT, padx=5)
         
-        self.auto_btn = ttk.Button(input_frame, text="⚡ Авто", command=self.auto_solve)
+        self.auto_btn = ttk.Button(input_frame, text=_("auto"), command=self.auto_solve)
         self.auto_btn.pack(side=tk.LEFT, padx=5)
         
         # Таблица истории ходов
         columns = ("move", "guess", "bulls", "cows")
         self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
-        self.tree.heading("move", text="№")
-        self.tree.heading("guess", text="Число")
-        self.tree.heading("bulls", text="Быки")
-        self.tree.heading("cows", text="Коровы")
-        
+        self.tree.heading("move", text=_("move"))
+        self.tree.heading("guess", text=_("guess"))
+        self.tree.heading("bulls", text=_("bulls"))
+        self.tree.heading("cows", text=_("cows"))
+                
         # Устанавливаем ширину колонок
         self.tree.column("move", width=50, anchor=tk.CENTER)
         self.tree.column("guess", width=100, anchor=tk.CENTER)
@@ -188,7 +192,7 @@ class GameWindow(tk.Tk):
         
         # Строка состояния
         self.status_var = tk.StringVar()
-        self.status_var.set("Новая игра. Введите число.")
+        self.status_var.set(_("status_new_game"))
         status_bar = ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     
@@ -202,21 +206,21 @@ class GameWindow(tk.Tk):
         for row in self.tree.get_children():
             self.tree.delete(row)
         self.entry_var.set("")
-        self.status_var.set("Новая игра. Введите число.")
+        self.status_var.set(_("status_new_game"))
         self.entry.focus()
         self.stats.add_game_played()  # Увеличиваем счётчик игр
     
     def check_guess(self):
         """Обрабатывает нажатие кнопки Проверить."""
         if self.game.game_over:
-            messagebox.showinfo("Игра окончена", "Игра уже завершена. Начните новую игру.")
+            messagebox.showinfo(_("game_over"), _("game_over_msg"))
             return
 
         guess = self.entry_var.get().strip()
         try:
             bulls, cows = self.game.check_guess(guess)
         except ValueError as e:
-            self.flash_entry()
+            messagebox.showerror(_("input_error_digits"))
             return
 
         # Добавляем запись в таблицу с чередованием фона
@@ -245,9 +249,9 @@ class GameWindow(tk.Tk):
         hint_text = self.game.hint()
         if hint_text:
             self.stats.add_hint()
-            messagebox.showinfo("Подсказка", hint_text)
+            messagebox.showinfo(_("hint_dialog"), hint_text)
         else:
-            messagebox.showinfo("Подсказка", "Игра завершена, подсказка не нужна.")
+            messagebox.showinfo(_("hint_dialog"), _("hint_all_guessed"))
     
     def auto_solve(self):
         """Автоматическое решение."""
@@ -257,45 +261,39 @@ class GameWindow(tk.Tk):
         answer = self.game.auto_solve()
         self.stats.add_auto_solve()
         # Показываем ответ
-        messagebox.showinfo("Авторешение", f"Загаданное число: {answer}")
+        messagebox.showinfo(_("auto_solve_title"), _("auto_solve_text", secret=answer))
         # Завершаем игру, как победу (но не считаем в статистику побед, а только авторешение)
         self.game.game_over = True
-        self.status_var.set(f"Авторешение. Число: {answer}")
+        self.status_var.set(_("status_auto_solve", secret=answer))
     
     def open_settings(self):
         """Открывает диалог настроек."""
         SettingsDialog(self, self.settings)
     
     def show_stats(self):
-        """Показывает статистику."""
-        messagebox.showinfo("Статистика", self.stats.get_text())
-    
+        data = self.stats.get_data()
+        avg = f"{data['average_moves']:.2f}" if data['games_won'] > 0 else "-"
+        best = str(data['best_score']) if data['best_score'] else "-"
+        text = _("stats_text",
+                played=data['games_played'],
+                won=data['games_won'],
+                avg=avg,
+                best=best,
+                hints=data['hints_used'],
+                auto=data['auto_solves'])
+        messagebox.showinfo(_("stats_title"), text)
+
     def reset_stats(self):
         """Сбрасывает статистику с подтверждением."""
-        if messagebox.askyesno("Сброс статистики", "Вы уверены, что хотите обнулить статистику?"):
+        if messagebox.askyesno(_("reset_confirm_title"), _("reset_confirm_msg")):
             self.stats.reset()
-            messagebox.showinfo("Статистика", "Статистика сброшена.")
+            messagebox.showinfo(_("stats_title"), _("stats_reset"))
     
     def show_rules(self):
-        rules = (
-            "Правила игры «Быки и коровы»:\n\n"
-            "Компьютер загадывает число из заданного количества цифр (по умолчанию 4).\n"
-            "Цифры могут повторяться или нет — зависит от настроек.\n\n"
-            "Вы вводите своё число. В ответ программа сообщает:\n"
-            "• Быки — цифры, стоящие на своих местах.\n"
-            "• Коровы — цифры, присутствующие в числе, но не на своих местах.\n\n"
-            "Цель — отгадать число за минимальное количество ходов."
-        )
-        messagebox.showinfo("Правила", rules)
+        messagebox.showinfo(_("rules_title"), _("rules_text"))
     
     def show_about(self):
-        about = (
-            "Игра «Быки и коровы»\n"
-            "Версия 1.0\n\n"
-            "Разработано в рамках Выпускной Квалификационной Работы Васильевым Глебом, студент ИСПт-22-(9)-2.\n"
-            "Используется Python + Tkinter."
-        )
-        messagebox.showinfo("О программе", about)
+        messagebox.showinfo(_("about_title"), _("about_text"))
     
     def on_closing(self):
         """Сохраняет геометрию окна и завершает работу."""
@@ -318,15 +316,15 @@ class GameWindow(tk.Tk):
 
     def show_win_dialog(self, moves, secret):
         win = tk.Toplevel(self)
-        win.title("Победа!")
+        win.title(_("win_title"))
         win.geometry("300x150")
         win.resizable(False, False)
         win.transient(self)
         win.grab_set()
         
-        ttk.Label(win, text="🎉 Поздравляем! 🎉", font=("Segoe UI", 14, "bold")).pack(pady=10)
-        ttk.Label(win, text=f"Вы угадали число {secret} за {moves} ходов.").pack()
-        ttk.Button(win, text="ОК", command=win.destroy).pack(pady=10)
+        ttk.Label(win, text="🎉 " + _("win_title") + " 🎉", font=("Segoe UI", 14, "bold")).pack(pady=10)
+        ttk.Label(win, text=_("win_message", secret=secret, moves=moves)).pack()
+        ttk.Button(win, text=_("ok"), command=win.destroy).pack(pady=10)
 
     def update_treeview_colors(self, theme):
         """Обновляет цвета чередования строк в зависимости от темы."""
@@ -336,3 +334,23 @@ class GameWindow(tk.Tk):
         else:
             self.tree.tag_configure('oddrow', background='#f2f2f2')
             self.tree.tag_configure('evenrow', background='#ffffff')
+
+    def update_texts(self):
+        """Обновляет все тексты при смене языка."""
+        self.title(_("app_title"))
+        self.label_your_number.config(text=_("your_number"))
+        self.check_btn.config(text=_("check"))
+        self.hint_btn.config(text=_("hint"))
+        self.auto_btn.config(text=_("auto"))
+        self.tree.heading("move", text=_("move"))
+        self.tree.heading("guess", text=_("guess"))
+        self.tree.heading("bulls", text=_("bulls"))
+        self.tree.heading("cows", text=_("cows"))
+        # Пересоздаём меню, чтобы обновить его пункты
+        self.create_menu()
+        # Обновляем статус, если игра не начата
+        if not self.game.game_over and len(self.game.history) == 0:
+            self.status_var.set(_("status_new_game"))
+        elif self.game.game_over and len(self.game.history) > 0:
+            # Если победа, текст уже должен быть, но можно обновить
+            pass
