@@ -1,30 +1,3 @@
-# Welcome to Markdown Generator
-
-## What is this?
-This is a **live markdown editor** that allows you to write and preview markdown in real-time.
-
-### Features
-- ✅ Live preview
-- ✅ Dark mode support
-- ✅ Copy to clipboard
-- ✅ Responsive design
-- ✅ Auto-save to localStorage
-- ✅ Formatting shortcuts
-
-### Example Code Block
-```javascript
-function greet(name) {
-  return `Hello, ${name}!`;
-}
-
-console.log(greet('World'));
-```
-
----
-
-**Start editing** the left panel to see your markdown come to life! 🚀
-
-
 # Игра «Быки и коровы»
 
 [English version](README.en.md)
